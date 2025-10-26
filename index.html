@@ -5,12 +5,7 @@
   <title>Vertical Dodge Game</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    :root {
-      --sky: #87ceeb;
-      --accent: #FFD700;
-      --obstacle: #FF4444;
-    }
-    html,body { margin:0; padding:0; height:100%; background:var(--sky); font-family:sans-serif; overflow:hidden;}
+    html,body { margin:0; padding:0; height:100%; background:#87ceeb; font-family:sans-serif; overflow:hidden;}
     #game-container { width:100%; height:100vh; position:relative; }
     #scorePanel { position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.3); color:white;
       padding:8px 12px; border-radius:8px; z-index:50; font-weight:bold;}
@@ -20,20 +15,18 @@
       border-radius:8px; cursor:pointer; margin-top:10px; }
     #logo { position:absolute; top:10px; left:50%; transform:translateX(-50%);
       width:80px; height:80px; border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.4);
-      animation: floatLogo 3s ease-in-out infinite; z-index:60; }
+      animation: floatLogo 3s ease-in-out infinite; z-index:60; pointer-events:none; }
     @keyframes floatLogo { 0%,100% { transform:translateX(-50%) translateY(0);} 50% { transform:translateX(-50%) translateY(-8px);} }
   </style>
-
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
 <body>
   <div id="game-container"></div>
   <div id="scorePanel">Score: <span id="score">0</span></div>
   <img id="logo" src="https://pbs.twimg.com/profile_images/1962781271978815488/07fQQARS_400x400.jpg" alt="logo">
-  
   <div id="overlay">
-    <h1>Vertical Dodge Game</h1>
-    <p>Use ↑ / ↓ to move. Avoid top & bottom obstacles!</p>
+    <h1>Vertical Dodge</h1>
+    <p>Use ↑ / ↓ or tap zones to move. Avoid top & bottom poles!</p>
     <button id="startBtn">Start Game</button>
   </div>
 
@@ -42,8 +35,8 @@ let score = 0;
 let player;
 let obstacles;
 let gameOver = false;
-let scoreInterval;
 let gameStarted = false;
+let scoreInterval;
 
 const config = {
   type: Phaser.AUTO,
@@ -51,65 +44,61 @@ const config = {
   height: window.innerHeight,
   parent: 'game-container',
   backgroundColor: '#87ceeb',
-  physics: {
-    default: 'arcade',
-    arcade: { gravity: { y: 0 }, debug: false }
-  },
+  physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
   scene: { preload, create, update }
 };
-
 const game = new Phaser.Game(config);
 
 function preload(){}
 
 function create(){
-  const H = this.scale.height;
   const W = this.scale.width;
+  const H = this.scale.height;
 
-  // player
+  // Player in center
   player = this.add.rectangle(W/2, H/2, 50,50, 0xffd700);
   this.physics.add.existing(player);
   player.body.setCollideWorldBounds(true);
 
-  // obstacle group
+  // Obstacles group
   obstacles = this.physics.add.group();
-
-  // collide player & obstacles
   this.physics.add.collider(player, obstacles, hitObstacle, null, this);
 
-  // controls
+  // Controls
   this.input.keyboard.on('keydown-UP', ()=>movePlayer(-1));
   this.input.keyboard.on('keydown-DOWN', ()=>movePlayer(1));
+  this.input.on('pointerdown', pointer=>{
+    const H = game.scale.height;
+    if(pointer.y < H/2) movePlayer(-1);
+    else movePlayer(1);
+  });
 }
 
 function update(){
   if(!gameStarted || gameOver) return;
-
   const W = this.scale.width;
   const H = this.scale.height;
 
   // spawn top obstacle
-  if(Phaser.Math.Between(0,100) < 3){
-    const width = Phaser.Math.Between(60,120);
+  if(Phaser.Math.Between(0,100)<3){
+    const width = Phaser.Math.Between(50,120);
     const obs = obstacles.create(W, 0, null).setDisplaySize(width, 40).setOrigin(0,0).setTint(0xff4444);
-    obs.body.setVelocityX(-400);
-    obs.body.setAllowGravity(false);
-  }
-  // spawn bottom obstacle
-  if(Phaser.Math.Between(0,100) < 3){
-    const width = Phaser.Math.Between(60,120);
-    const obs = obstacles.create(W, H-40, null).setDisplaySize(width, 40).setOrigin(0,0).setTint(0xff4444);
-    obs.body.setVelocityX(-400);
-    obs.body.setAllowGravity(false);
+    obs.body.setVelocityX(-400); obs.body.setAllowGravity(false);
   }
 
-  // remove offscreen
+  // spawn bottom obstacle
+  if(Phaser.Math.Between(0,100)<3){
+    const width = Phaser.Math.Between(50,120);
+    const obs = obstacles.create(W, H-40, null).setDisplaySize(width, 40).setOrigin(0,0).setTint(0xff4444);
+    obs.body.setVelocityX(-400); obs.body.setAllowGravity(false);
+  }
+
+  // remove offscreen obstacles
   obstacles.children.iterate(o=>{ if(o.x<-200) o.destroy(); });
 }
 
 function movePlayer(dir){
-  // dir=-1 up, dir=1 down
-  if(gameOver || !gameStarted) return;
+  if(!gameStarted || gameOver) return;
   player.y += dir*60;
   const H = game.scale.height;
   if(player.y<0) player.y=0;
@@ -128,13 +117,11 @@ function startGame(){
   score = 0; gameOver=false; gameStarted=true;
   document.getElementById("score").innerText = score;
 
-  // increase score every second
   scoreInterval = setInterval(()=>{
     if(!gameOver){
-      score++;
-      document.getElementById("score").innerText = score;
+      score++; document.getElementById("score").innerText = score;
     }
-  }, 1000);
+  },1000);
 }
 
 function showOverlay(text){
