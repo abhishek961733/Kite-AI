@@ -2,43 +2,26 @@
 <html lang="hi">
 <head>
   <meta charset="utf-8">
-  <title>Endless Runner – Community Mini Game</title>
+  <title>Vertical Dodge Game</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
     :root {
       --sky: #87ceeb;
-      --ground: #228B22;
       --accent: #FFD700;
-      --panel: rgba(0,0,0,0.7);
+      --obstacle: #FF4444;
     }
-    html,body { margin:0; padding:0; height:100%; background:var(--sky); font-family: 'Poppins', sans-serif; overflow:hidden;}
+    html,body { margin:0; padding:0; height:100%; background:var(--sky); font-family:sans-serif; overflow:hidden;}
     #game-container { width:100%; height:100vh; position:relative; }
-    #scorePanel {
-      position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.3); color:white;
-      padding:8px 12px; border-radius:8px; z-index:50; font-weight:bold;
-    }
-    #overlay {
-      position:absolute; inset:0; background:rgba(0,0,0,0.6);
-      display:flex; align-items:center; justify-content:center;
-      flex-direction:column; color:white; z-index:100;
-    }
-    #overlay button {
-      background:linear-gradient(180deg,#FFD700,#FF8A00);
-      border:none; padding:10px 18px; font-size:16px;
-      border-radius:8px; cursor:pointer; margin-top:10px;
-    }
-    #logo {
-      position:absolute;
-      top:10px; left:50%; transform:translateX(-50%);
-      width:80px; height:80px; border-radius:50%;
-      box-shadow:0 0 10px rgba(0,0,0,0.4);
-      animation: floatLogo 3s ease-in-out infinite;
-      z-index:60;
-    }
-    @keyframes floatLogo {
-      0%,100% { transform: translateX(-50%) translateY(0); }
-      50% { transform: translateX(-50%) translateY(-8px); }
-    }
+    #scorePanel { position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.3); color:white;
+      padding:8px 12px; border-radius:8px; z-index:50; font-weight:bold;}
+    #overlay { position:absolute; inset:0; background:rgba(0,0,0,0.6);
+      display:flex; align-items:center; justify-content:center; flex-direction:column; color:white; z-index:100;}
+    #overlay button { background:linear-gradient(180deg,#FFD700,#FF8A00); border:none; padding:10px 18px; font-size:16px;
+      border-radius:8px; cursor:pointer; margin-top:10px; }
+    #logo { position:absolute; top:10px; left:50%; transform:translateX(-50%);
+      width:80px; height:80px; border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.4);
+      animation: floatLogo 3s ease-in-out infinite; z-index:60; }
+    @keyframes floatLogo { 0%,100% { transform:translateX(-50%) translateY(0);} 50% { transform:translateX(-50%) translateY(-8px);} }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
@@ -49,14 +32,13 @@
   <img id="logo" src="https://pbs.twimg.com/profile_images/1962781271978815488/07fQQARS_400x400.jpg" alt="logo">
   
   <div id="overlay">
-    <h1>🏃‍♂️ Endless Runner</h1>
-    <p>Tap or press ↑ to jump, avoid falling obstacles!</p>
+    <h1>Vertical Dodge Game</h1>
+    <p>Use ↑ / ↓ to move. Avoid top & bottom obstacles!</p>
     <button id="startBtn">Start Game</button>
   </div>
 
 <script>
 let score = 0;
-let scoreText;
 let player;
 let obstacles;
 let gameOver = false;
@@ -71,7 +53,7 @@ const config = {
   backgroundColor: '#87ceeb',
   physics: {
     default: 'arcade',
-    arcade: { gravity: { y: 1200 }, debug: false }
+    arcade: { gravity: { y: 0 }, debug: false }
   },
   scene: { preload, create, update }
 };
@@ -83,79 +65,72 @@ function preload(){}
 function create(){
   const H = this.scale.height;
   const W = this.scale.width;
-  
-  // ground
-  const ground = this.add.rectangle(W/2, H-20, W, 40, 0x228B22);
-  this.physics.add.existing(ground, true);
-  
+
   // player
-  player = this.add.rectangle(100, H-100, 50, 50, 0xffd700);
+  player = this.add.rectangle(W/2, H/2, 50,50, 0xffd700);
   this.physics.add.existing(player);
   player.body.setCollideWorldBounds(true);
-  this.physics.add.collider(player, ground);
-  
+
   // obstacle group
   obstacles = this.physics.add.group();
-  
+
   // collide player & obstacles
   this.physics.add.collider(player, obstacles, hitObstacle, null, this);
 
   // controls
-  this.input.keyboard.on('keydown-UP', jump, this);
-  this.input.on('pointerdown', jump, this);
-  
-  // Score text (in DOM)
-  score = 0;
-  document.getElementById("score").innerText = score;
+  this.input.keyboard.on('keydown-UP', ()=>movePlayer(-1));
+  this.input.keyboard.on('keydown-DOWN', ()=>movePlayer(1));
 }
 
 function update(){
-  if (!gameStarted || gameOver) return;
+  if(!gameStarted || gameOver) return;
 
   const W = this.scale.width;
   const H = this.scale.height;
 
-  // create obstacles randomly
-  if (Phaser.Math.Between(0,100) < 3) {
-    const size = Phaser.Math.Between(30, 60);
-    const obs = obstacles.create(W + size, H - 60, null)
-      .setDisplaySize(size, size)
-      .setOrigin(0.5,0.5)
-      .setTint(0xff4444);
+  // spawn top obstacle
+  if(Phaser.Math.Between(0,100) < 3){
+    const width = Phaser.Math.Between(60,120);
+    const obs = obstacles.create(W, 0, null).setDisplaySize(width, 40).setOrigin(0,0).setTint(0xff4444);
+    obs.body.setVelocityX(-400);
+    obs.body.setAllowGravity(false);
+  }
+  // spawn bottom obstacle
+  if(Phaser.Math.Between(0,100) < 3){
+    const width = Phaser.Math.Between(60,120);
+    const obs = obstacles.create(W, H-40, null).setDisplaySize(width, 40).setOrigin(0,0).setTint(0xff4444);
     obs.body.setVelocityX(-400);
     obs.body.setAllowGravity(false);
   }
 
-  // remove off-screen obstacles
-  obstacles.children.iterate(o => {
-    if (o.x < -50) o.destroy();
-  });
+  // remove offscreen
+  obstacles.children.iterate(o=>{ if(o.x<-200) o.destroy(); });
 }
 
-function jump(){
-  if (!gameStarted || gameOver) return;
-  if (player.body.touching.down){
-    player.body.setVelocityY(-700);
-  }
+function movePlayer(dir){
+  // dir=-1 up, dir=1 down
+  if(gameOver || !gameStarted) return;
+  player.y += dir*60;
+  const H = game.scale.height;
+  if(player.y<0) player.y=0;
+  if(player.y>H) player.y=H;
 }
 
 function hitObstacle(){
-  if (gameOver) return;
+  if(gameOver) return;
   gameOver = true;
   clearInterval(scoreInterval);
-  showOverlay(`💀 Game Over!<br>Final Score: ${score}`);
+  showOverlay(`💀 Game Over!<br>Score: ${score}`);
 }
 
 function startGame(){
   document.getElementById("overlay").style.display = "none";
-  score = 0;
-  gameOver = false;
-  gameStarted = true;
+  score = 0; gameOver=false; gameStarted=true;
   document.getElementById("score").innerText = score;
 
-  // score increase every sec
-  scoreInterval = setInterval(() => {
-    if (!gameOver) {
+  // increase score every second
+  scoreInterval = setInterval(()=>{
+    if(!gameOver){
       score++;
       document.getElementById("score").innerText = score;
     }
@@ -165,12 +140,10 @@ function startGame(){
 function showOverlay(text){
   const overlay = document.getElementById("overlay");
   overlay.innerHTML = `<h1>${text}</h1><button onclick="restartGame()">Restart</button>`;
-  overlay.style.display = "flex";
+  overlay.style.display="flex";
 }
 
-function restartGame(){
-  window.location.reload();
-}
+function restartGame(){ window.location.reload(); }
 
 document.getElementById("startBtn").addEventListener("click", startGame);
 </script>
