@@ -1,157 +1,178 @@
 <!doctype html>
 <html lang="hi">
 <head>
-  <meta charset="utf-8" />
-  <title>Advanced Endless Runner</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8">
+  <title>Endless Runner – Community Mini Game</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    :root{
-      --bg-sky: #87CEEB;
-      --panel: rgba(10,10,10,0.6);
-      --accent: #FFB703;
-      --accent-dark: #FF8A00;
-      --muted: rgba(255,255,255,0.9);
-      --btn-bg: linear-gradient(180deg,#FFB703,#FF8A00);
-      --success: #22c55e;
-      --danger: #ef4444;
+    :root {
+      --sky: #87ceeb;
+      --ground: #228B22;
+      --accent: #FFD700;
+      --panel: rgba(0,0,0,0.7);
     }
-    html,body{margin:0;padding:0;height:100%;background:var(--bg-sky);font-family:Inter,Arial,sans-serif;}
-    #game-container{width:100%;height:100vh;overflow:hidden;position:relative;}
-    .ui{position:absolute;z-index:30;color:var(--muted);background:rgba(0,0,0,0.15);padding:8px 10px;border-radius:8px;}
-    #hud{left:12px;top:12px;}
-    #controls{right:12px;top:12px;display:flex;gap:8px;}
-    button{padding:8px 10px;border:none;border-radius:8px;font-weight:600;cursor:pointer;}
-    .btn-primary{background:var(--btn-bg);color:#222;}
-    .btn-ghost{background:rgba(255,255,255,0.08);color:var(--muted);}
-    #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;}
-    #menu{background:var(--panel);padding:22px;border-radius:14px;color:#fff;text-align:center;width:320px;}
-    input{padding:8px;border-radius:8px;border:none;width:160px;}
-    #leaderboard{position:absolute;right:12px;bottom:12px;background:rgba(255,255,255,0.95);color:#111;padding:12px;border-radius:10px;max-width:260px;font-family:Arial;z-index:40;}
-    #leaderboard strong{display:block;margin-bottom:6px;}
-    #lbList{padding-left:16px;margin:6px 0 10px 0;}
-    .toast{position:absolute;left:50%;transform:translateX(-50%);bottom:24px;z-index:60;background:rgba(0,0,0,0.7);color:#fff;padding:10px 16px;border-radius:10px;display:none;}
-    #logo{position:absolute;top:12px;left:12px;width:50px;height:50px;border-radius:50%;box-shadow:0 0 8px rgba(0,0,0,0.3);z-index:100;}
+    html,body { margin:0; padding:0; height:100%; background:var(--sky); font-family: 'Poppins', sans-serif; overflow:hidden;}
+    #game-container { width:100%; height:100vh; position:relative; }
+    #scorePanel {
+      position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.3); color:white;
+      padding:8px 12px; border-radius:8px; z-index:50; font-weight:bold;
+    }
+    #overlay {
+      position:absolute; inset:0; background:rgba(0,0,0,0.6);
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column; color:white; z-index:100;
+    }
+    #overlay button {
+      background:linear-gradient(180deg,#FFD700,#FF8A00);
+      border:none; padding:10px 18px; font-size:16px;
+      border-radius:8px; cursor:pointer; margin-top:10px;
+    }
+    #logo {
+      position:absolute;
+      top:10px; left:50%; transform:translateX(-50%);
+      width:80px; height:80px; border-radius:50%;
+      box-shadow:0 0 10px rgba(0,0,0,0.4);
+      animation: floatLogo 3s ease-in-out infinite;
+      z-index:60;
+    }
+    @keyframes floatLogo {
+      0%,100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-8px); }
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-  <img id="logo" src="https://pbs.twimg.com/profile_images/1962781271978815488/07fQQARS_400x400.jpg" alt="logo" />
-
   <div id="game-container"></div>
-
-  <div class="ui" id="hud">
-    <div>Score: <strong id="score">0</strong> | Best: <strong id="best">0</strong></div>
-  </div>
-
-  <div id="controls" class="ui">
-    <button id="btnPause" class="btn-ghost">Pause</button>
-    <button id="btnMute" class="btn-ghost">Mute</button>
-  </div>
-
+  <div id="scorePanel">Score: <span id="score">0</span></div>
+  <img id="logo" src="https://pbs.twimg.com/profile_images/1962781271978815488/07fQQARS_400x400.jpg" alt="logo">
+  
   <div id="overlay">
-    <div id="menu">
-      <h2 style="color:var(--accent)">Advanced Endless Runner</h2>
-      <p>Tap / Click to Jump. Use arrows to move.</p>
-      <button id="btnStart" class="btn-primary">Start Game</button>
-      <div style="margin-top:10px;">
-        <label>Name: <input id="playerName" placeholder="Player" /></label>
-      </div>
-    </div>
+    <h1>🏃‍♂️ Endless Runner</h1>
+    <p>Tap or press ↑ to jump, avoid falling obstacles!</p>
+    <button id="startBtn">Start Game</button>
   </div>
-
-  <div id="leaderboard">
-    <strong>Leaderboard (Top 10)</strong>
-    <ol id="lbList"></ol>
-    <button id="btnSubmitScore" class="btn-primary">Submit</button>
-  </div>
-
-  <div class="toast" id="toast">Toast</div>
 
 <script>
-/* ========== FIREBASE CONFIG ========== */
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-/* ===================================== */
+let score = 0;
+let scoreText;
+let player;
+let obstacles;
+let gameOver = false;
+let scoreInterval;
+let gameStarted = false;
 
-/* ========== FIRESTORE RULES (recommended) ==========
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /scores/{document=**} {
-      allow read: if true;
-      allow write: if request.resource.data.score is int
-                   && request.resource.data.name.size() < 25;
-    }
-  }
-}
-==================================================== */
-
-/* ========== GAME LOGIC (simplified runner) ========== */
 const config = {
   type: Phaser.AUTO,
-  parent: 'game-container',
   width: window.innerWidth,
   height: window.innerHeight,
-  backgroundColor: 0x87ceeb,
-  physics: { default: 'arcade', arcade: { gravity: { y: 1600 } } },
+  parent: 'game-container',
+  backgroundColor: '#87ceeb',
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 1200 }, debug: false }
+  },
   scene: { preload, create, update }
 };
+
 const game = new Phaser.Game(config);
-let player, cursors, score=0, best=0, gameOver=false;
 
 function preload(){}
-function create(){
-  const H=this.scale.height,W=this.scale.width;
-  player=this.physics.add.sprite(W/2,H-80,null).setDisplaySize(50,50).setTint(0xffd700);
-  this.physics.add.collider(player,this.add.rectangle(W/2,H-20,W,40,0x228B22,true));
-  cursors=this.input.keyboard.createCursorKeys();
-  best=localStorage.getItem("best")||0;
-  document.getElementById("best").textContent=best;
-  this.time.addEvent({delay:1000,loop:true,callback:()=>{if(!gameOver){score++;document.getElementById("score").textContent=score;}}});
-  document.getElementById("btnStart").onclick=()=>{document.getElementById("overlay").style.display="none";resetGame();};
-}
-function update(){
-  if(!cursors||gameOver)return;
-  if(cursors.up.isDown && player.body.touching.down)player.setVelocityY(-750);
-}
-function resetGame(){score=0;gameOver=false;document.getElementById("score").textContent=0;}
-function showToast(msg,ms=1500){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',ms);}
 
-/* ====== Leaderboard ====== */
-async function submitScore(){
-  const name=document.getElementById('playerName').value||"Player";
-  const s=score;
-  await db.collection("scores").add({name,score:s,timestamp:firebase.firestore.FieldValue.serverTimestamp()});
-  showToast("Score uploaded!");
-  renderLeaderboard();
+function create(){
+  const H = this.scale.height;
+  const W = this.scale.width;
+  
+  // ground
+  const ground = this.add.rectangle(W/2, H-20, W, 40, 0x228B22);
+  this.physics.add.existing(ground, true);
+  
+  // player
+  player = this.add.rectangle(100, H-100, 50, 50, 0xffd700);
+  this.physics.add.existing(player);
+  player.body.setCollideWorldBounds(true);
+  this.physics.add.collider(player, ground);
+  
+  // obstacle group
+  obstacles = this.physics.add.group();
+  
+  // collide player & obstacles
+  this.physics.add.collider(player, obstacles, hitObstacle, null, this);
+
+  // controls
+  this.input.keyboard.on('keydown-UP', jump, this);
+  this.input.on('pointerdown', jump, this);
+  
+  // Score text (in DOM)
+  score = 0;
+  document.getElementById("score").innerText = score;
 }
-async function renderLeaderboard(){
-  const list=document.getElementById('lbList');
-  list.innerHTML="<li>Loading...</li>";
-  const snap=await db.collection("scores").orderBy("score","desc").limit(10).get();
-  list.innerHTML="";
-  snap.forEach(doc=>{
-    const li=document.createElement("li");
-    const d=doc.data();
-    li.textContent=`${d.name} — ${d.score}`;
-    list.appendChild(li);
+
+function update(){
+  if (!gameStarted || gameOver) return;
+
+  const W = this.scale.width;
+  const H = this.scale.height;
+
+  // create obstacles randomly
+  if (Phaser.Math.Between(0,100) < 3) {
+    const size = Phaser.Math.Between(30, 60);
+    const obs = obstacles.create(W + size, H - 60, null)
+      .setDisplaySize(size, size)
+      .setOrigin(0.5,0.5)
+      .setTint(0xff4444);
+    obs.body.setVelocityX(-400);
+    obs.body.setAllowGravity(false);
+  }
+
+  // remove off-screen obstacles
+  obstacles.children.iterate(o => {
+    if (o.x < -50) o.destroy();
   });
 }
-document.getElementById("btnSubmitScore").onclick=submitScore;
-renderLeaderboard();
+
+function jump(){
+  if (!gameStarted || gameOver) return;
+  if (player.body.touching.down){
+    player.body.setVelocityY(-700);
+  }
+}
+
+function hitObstacle(){
+  if (gameOver) return;
+  gameOver = true;
+  clearInterval(scoreInterval);
+  showOverlay(`💀 Game Over!<br>Final Score: ${score}`);
+}
+
+function startGame(){
+  document.getElementById("overlay").style.display = "none";
+  score = 0;
+  gameOver = false;
+  gameStarted = true;
+  document.getElementById("score").innerText = score;
+
+  // score increase every sec
+  scoreInterval = setInterval(() => {
+    if (!gameOver) {
+      score++;
+      document.getElementById("score").innerText = score;
+    }
+  }, 1000);
+}
+
+function showOverlay(text){
+  const overlay = document.getElementById("overlay");
+  overlay.innerHTML = `<h1>${text}</h1><button onclick="restartGame()">Restart</button>`;
+  overlay.style.display = "flex";
+}
+
+function restartGame(){
+  window.location.reload();
+}
+
+document.getElementById("startBtn").addEventListener("click", startGame);
 </script>
 </body>
 </html>
